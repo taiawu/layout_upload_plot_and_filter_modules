@@ -31,7 +31,7 @@ filterlayoutServer <- function(id, layout, text_name) {
         observeEvent(layout(), {
             
             layout_cont <- reactive(contract_layout(layout()))
-            
+            filtered_layout <- reactive(layout())
             picker_list_raw <-  reactive(layout_to_picker_list(layout_cont()))
             
             output$picker <- renderUI({ # called in UI module
@@ -40,6 +40,7 @@ filterlayoutServer <- function(id, layout, text_name) {
                     # THANK YOU for renderUI in modules https://gist.github.com/tbadams45/38f1f56e0f2d7ced3507ef11b0a2fdce 
                    inputId =  session$ns("take_these"), 
                     choices = picker_list_raw(),
+                   selected = picker_list_raw(),
                     multiple = TRUE,
                     options = pickerOptions(
                         actionsBox = TRUE,
@@ -54,17 +55,15 @@ filterlayoutServer <- function(id, layout, text_name) {
             })
             
           output$selection <- renderPrint({picked_to_layout(layout(), input$take_these)})
-          return_df <- reactive(picked_to_layout(layout(), input$take_these))
-            
         })
         
         reactive(picked_to_layout(layout(), input$take_these))
-
     })
 }
 
 ui <- fluidPage(useShinyalert(),
                 titlePanel("Filter layouts module"),
+                
                 sidebarLayout(
                     sidebarPanel(
                         filterlayoutUI("filter_layout")[[1]]
@@ -89,8 +88,6 @@ server <- function(input, output, session) {
 
     output$selection_external <- renderPrint(filter_list())
 
-    
-  
 }
 
 shinyApp(ui = ui, server = server)

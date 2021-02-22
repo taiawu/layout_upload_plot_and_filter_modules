@@ -26,56 +26,204 @@ layout_ex <- tibble(well = c("A1", "A2", "A3", "A4"),
                             dye = c("A001", "A001", "A001", "A004"),
                             dye_conc = c(1, 2, 3, 4))
 
-layout_ex
-        
+picker_list_raw <-  layout_to_picker_list(layout_c)
+picker_list_raw
+
+
 input_picked <- c("A1<LAYOUT_GROUP>well", "A4<LAYOUT_GROUP>well")
 
-filter_picked(layout_ex, input_picked)
+layout_c <- contract_layout(layout_ex)
+layout_e <- expand_layout(layout_c)
 
-picker_condensed_all <- layout_ex %>%
-                        mutate(across(everything(), as.character)) %>%
-                        pivot_longer(cols = everything(), names_to = "group", values_to = "value") %>%
-                        unite(picker_val, c(value, group), sep  = "<LAYOUT_GROUP>", remove = FALSE) # %>%
+layout_c
+layout_c %>%
+  filter(picker_val %in% input_picked) #%>%
+  expand_layout()
+  
 
-picker_condensed_picked <- picker_condensed_all %>% filter(picker_val %in% input_picked)
-
-right_join(picker_condensed_picked, picker_condensed_all, by = "picker_val")
-
-picker_condensed_picked
-picker_condensed_all
-
-# %>%
-#   mutate(across( ~na_if(FALSE)))
-                        
+layout_c
 
 
-picker_condensed %>% 
-   mutate(across(where(is.character), ~na_if(., )))
-
-
-
-picker_condensed %>%
-  pivot_wider(group, value)
-
-layout_ex
 ```
 
 ```{r}
-library(rlang)
-library(glue)
-
-test_text <-function(name) {
-
-  glue("The result of `1 + 2` is {1 + 2}, so says {name}.")
+contract_layout <- function(layout) {
+  layout %>%
+    mutate(across(everything(), as.character)) %>%
+    pivot_longer(cols = everything(), names_to = "variable", values_to = "value") %>%
+    unite(picker_val, c(variable, value), sep  = "<LAYOUT_GROUP>", remove = FALSE)
 }
 
-test_text("Muffins")
+expand_layout <- function(layout_cont) {
+  layout_cont %>% 
+    select(-picker_val) %>%
+    pivot_wider(id_cols = well, names_from = variable, values_from = value)
+  
+}
 
-casefold("plot", upper = TRUE)
+layout_to_picker_list <- function(layout_cont) {
+  
+  layout_exp <- expand_layout(layout_cont)
+  
+  layout_names <- layout_exp %>% 
+                    as.list() %>% 
+                    lapply(unique)
+  
+  layout_vals <- map2(names(layout_names), layout_names, paste, sep = "<LAYOUT_GROUP>")
+  
+  layout_list <- map2(layout_vals, layout_names, set_names)  %>%
+    .[order(sapply(., length))]
+  
+}
 
-tolower("plot")
-
-toupper("plot")
+picked_to_layout <- function(layout, picked_vec) {
+  
+  layout %>%
+    mutate(across(everything(), as.character)) %>%
+    pivot_longer(cols = everything(), names_to = "group", values_to = "value") %>%
+    unite(picker_val, c(value, group), sep  = "<LAYOUT_GROUP>", remove = FALSE)  %>%
+    filter(picker_val %in% picked_vec) 
+  
+}
 ```
+
+```{r}
+contract_layout <- function(layout) {
+  layout %>%
+    mutate(across(everything(), as.character)) %>%
+    mutate(well_id = well) %>%
+    pivot_longer(-well_id, names_to = "variable", values_to = "value") %>%
+    #pivot_longer(cols = everything(), names_to = "variable", values_to = "value") %>%
+    unite(picker_val, c(value, variable), sep  = "<LAYOUT_GROUP>", remove = FALSE)
+}
+
+expand_layout <- function(layout_cont) {
+  layout_cont %>% 
+    select(-picker_val) %>%
+    pivot_wider(id_cols = well_id, names_from = variable, values_from = value) %>%
+    select(-well_id) %>%
+    distinct()
+  
+}
+
+
+layout_to_picker_list <- function(layout_cont) {
+
+  layout_exp <- expand_layout(layout_cont)
+
+  layout_names <- layout_exp %>%
+    as.list() %>%
+    lapply(unique)
+
+  layout_vals <- map2(layout_names, names(layout_names), paste, sep = "<LAYOUT_GROUP>")
+
+  layout_list <- map2(layout_vals, layout_names, set_names)  %>%
+    .[order(sapply(., length))]
+
+}
+
+picked_to_layout <- function(layout, picked_vec) {
+  
+  layout_c_picked <- contract_layout(layout) %>%
+                       filter(picker_val %in% picked_vec) %>%
+                       expand_layout()
+          
+  layout %>%
+    right_join(., layout_c_picked) %>%
+    drop_na()
+
+}
+
+picked <- c("A1<LAYOUT_GROUP>well", "A4<LAYOUT_GROUP>well", "A001<LAYOUT_GROUP>dye")
+layout_c <- contract_layout(layout_ex)
+layout_e <- expand_layout(layout_c)
+
+picked_to_layout(layout_ex, picked)
+
+```
+
+```{r}
+contract_layout <- function(layout) {
+  layout %>%
+    mutate(across(everything(), as.character)) %>%
+    mutate(well_id = well) %>%
+    pivot_longer(-well_id, names_to = "variable", values_to = "value") %>%
+    unite(picker_val, c(value, variable), sep  = "<LAYOUT_GROUP>", remove = FALSE)
+}
+
+expand_layout <- function(layout_cont) {
+  layout_cont %>% 
+    select(-picker_val) %>%
+    pivot_wider(id_cols = well_id, names_from = variable, values_from = value) %>%
+    select(-well_id)
+  
+}
+
+
+layout_to_picker_list <- function(layout_cont) {
+
+  layout_exp <- expand_layout(layout_cont)
+
+  layout_names <- layout_exp %>%
+    as.list() %>%
+    lapply(unique)
+
+  layout_vals <- map2(layout_names, names(layout_names), paste, sep = "<LAYOUT_GROUP>")
+
+  layout_list <- map2(layout_vals, layout_names, set_names)  %>%
+    .[order(sapply(., length))]
+
+}
+
+picked_to_layout <- function(layout, picked_vec) {
+  
+  layout_c_picked <- contract_layout(layout) %>%
+                    filter(picker_val %in% picked_vec) %>%
+                    expand_layout()
+  
+  layout %>%
+    right_join(., layout_c_picked) %>%
+    drop_na()
+  
+}
+
+picked <- c("A1<LAYOUT_GROUP>well", "A4<LAYOUT_GROUP>well", "A001<LAYOUT_GROUP>dye")
+layout_c <- contract_layout(layout_ex)
+layout_e <- expand_layout(layout_c)
+
+picked_to_layout(layout_ex, picked)
+```
+
+```{r}
+picked_to_layout <- function(layout, picked_vec) {
+  
+    tryCatch({ 
+      
+      layout_c_picked <- contract_layout(layout) %>%
+                      filter(picker_val %in% picked_vec) %>%
+                      expand_layout()
+
+      layout %>%
+            mutate(across(everything(), as.character)) %>%
+            right_join(., layout_c_picked) %>%
+            drop_na() %>%
+            distinct() 
+    
+    }, error = function(e) { 
+      print("error")
+      return(layout)
+      
+    })
+  
+}
+
+picked_to_layout(layout_ex, picked)
+
+picked_to_layout(layout_ex, c())
+```
+
+
+
+
 
 
