@@ -5,6 +5,7 @@ library(shinyalert) # needed to upload layout files
 library(shinycssloaders) # needed for the spinner on the layout plots
 library(varhandle) 
 library(shinyWidgets)
+library(glue)
 source("upload_layout_module.R")
 source("layout_color_plot_module.R")
 source("layout_filter_and_select_module.R")
